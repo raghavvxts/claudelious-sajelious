@@ -24,7 +24,7 @@ function App() {
           <motion.div 
             exit={{ opacity: 0 }}
             transition={{ duration: 1.5 }}
-            className="fixed inset-0 z-[1000] bg-charcoal-950 flex flex-col items-center justify-center cursor-pointer"
+            className="hidden md:flex fixed inset-0 z-[1000] bg-charcoal-950 flex-col items-center justify-center cursor-pointer"
             onClick={() => setEntered(true)}
           >
             <motion.div 
@@ -39,7 +39,7 @@ function App() {
         )}
       </AnimatePresence>
 
-      <main className={`relative w-full overflow-clip bg-charcoal-900 min-h-screen font-sans selection:bg-gold-500 selection:text-charcoal-900 ${!entered ? "h-screen overflow-hidden" : ""}`}>
+      <main className={`relative w-full overflow-clip bg-charcoal-900 min-h-screen font-sans selection:bg-gold-500 selection:text-charcoal-900 ${!entered ? "md:h-screen md:overflow-hidden" : ""}`}>
         
         {/* Global Cinematic Glassy Vignette (Spotlight Effect) */}
         <div className="fixed inset-0 pointer-events-none z-[45] bg-[radial-gradient(ellipse_at_center,rgba(205,166,95,0.08)_0%,transparent_30%,rgba(5,5,5,0.9)_100%)] shadow-[inset_0_0_150px_rgba(0,0,0,0.9)] mix-blend-overlay" />
