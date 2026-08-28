@@ -34,7 +34,6 @@ function App() {
             >
               ENTER THE ARCHIVES
             </motion.div>
-            <p className="mt-8 font-mono text-[10px] text-parchment-200/40 uppercase tracking-[0.3em]">Audio Required</p>
           </motion.div>
         )}
       </AnimatePresence>
