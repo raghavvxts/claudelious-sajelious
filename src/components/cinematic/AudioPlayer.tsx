@@ -9,28 +9,13 @@ export function AudioPlayer() {
   useEffect(() => {
     const startAudio = () => {
       if (audioRef.current && !hasInteracted) {
-        audioRef.current.volume = 0.6; // Start at 60% volume
+        audioRef.current.volume = 1.0; // Instantly start at 100% volume
         const playPromise = audioRef.current.play();
         
         if (playPromise !== undefined) {
           playPromise.then(() => {
             setIsPlaying(true);
             setHasInteracted(true);
-            
-            // Gradually increase to 100% over a few seconds
-            const fadeInterval = setInterval(() => {
-              if (audioRef.current) {
-                if (audioRef.current.volume < 0.99) {
-                  audioRef.current.volume = Math.min(1.0, audioRef.current.volume + 0.02);
-                } else {
-                  audioRef.current.volume = 1.0;
-                  clearInterval(fadeInterval);
-                }
-              } else {
-                clearInterval(fadeInterval);
-              }
-            }, 200); // Increases by 0.02 every 200ms (takes 4 seconds to reach 100%)
-            
           }).catch(() => {
             console.log("Autoplay blocked. Waiting for explicit user interaction.");
           });
@@ -39,15 +24,22 @@ export function AudioPlayer() {
     };
 
     // Modern browsers strictly block autoplay until the user interacts with the page.
-    // We listen for any scroll, click, or key press to automatically start the music.
+    // We listen for any movement, scroll, click, or key press to automatically start the music.
     window.addEventListener('click', startAudio, { once: true });
     window.addEventListener('scroll', startAudio, { once: true });
     window.addEventListener('keydown', startAudio, { once: true });
+    window.addEventListener('mousemove', startAudio, { once: true });
+    window.addEventListener('touchstart', startAudio, { once: true });
+
+    // Attempt to start immediately (works if user has visited the site before and browser allows it)
+    startAudio();
 
     return () => {
       window.removeEventListener('click', startAudio);
       window.removeEventListener('scroll', startAudio);
       window.removeEventListener('keydown', startAudio);
+      window.removeEventListener('mousemove', startAudio);
+      window.removeEventListener('touchstart', startAudio);
     };
   }, [hasInteracted]);
 
