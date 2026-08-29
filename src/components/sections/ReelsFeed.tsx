@@ -24,7 +24,9 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [showHeartAnim, setShowHeartAnim] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
+  const lastTapTimeRef = useRef(0);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const backgroundAudioRef = useRef<HTMLVideoElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -73,6 +75,16 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
     });
 
   }, [isVisible, currentSlide, post.media, isMuted]);
+
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    if (now - lastTapTimeRef.current < 300) {
+      if (!isLiked) toggleLike();
+      setShowHeartAnim(true);
+      setTimeout(() => setShowHeartAnim(false), 1000);
+    }
+    lastTapTimeRef.current = now;
+  };
 
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -157,6 +169,23 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
     }
   };
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Claudelious Sajelious Jr.',
+          text: post.caption,
+          url: window.location.href,
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert("Link copied to clipboard!");
+    }
+  };
+
   const hasAudio = !!post.audioUrl || post.media.some(m => m.type === 'video');
 
   return (
@@ -179,6 +208,7 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
       <div 
         ref={carouselRef}
         onScroll={handleScroll}
+        onClick={handleDoubleTap}
         className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide scroll-smooth"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
@@ -210,6 +240,21 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
           </div>
         ))}
       </div>
+
+      {/* Double Tap Heart Animation */}
+      <AnimatePresence>
+        {showHeartAnim && (
+          <motion.div 
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1.2, opacity: 1 }}
+            exit={{ scale: 1, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 10 }}
+            className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none"
+          >
+            <Heart size={120} className="fill-white text-white drop-shadow-[0_0_40px_rgba(255,255,255,0.8)]" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Soft Gradient Overlay for Text Readability - Only on bottom half */}
       <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
@@ -287,7 +332,10 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
             <MessageCircle size={22} />
           </button>
 
-          <button className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors">
+          <button 
+            onClick={handleShare}
+            className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors"
+          >
             <Send size={20} />
           </button>
 
