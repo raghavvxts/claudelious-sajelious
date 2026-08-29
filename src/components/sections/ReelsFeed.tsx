@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Volume2, VolumeX, Heart, MessageCircle, Send, Plus, ChevronRight, ChevronLeft, Trash2, X, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Volume2, VolumeX, Heart, MessageCircle, Send, Plus, ChevronRight, ChevronLeft, Trash2, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../../lib/utils';
 import { db, collection, query, orderBy, onSnapshot, deleteDoc, doc, addDoc, serverTimestamp } from '../../lib/firebase';
@@ -409,16 +409,9 @@ export function ReelsFeed() {
   const [error, setError] = useState('');
   const [isUploaderOpen, setIsUploaderOpen] = useState(false);
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
+  const [desktopSelectedPostIndex, setDesktopSelectedPostIndex] = useState<number | null>(null);
 
-  const scrollFeed = (direction: 'up' | 'down') => {
-    if (scrollRef.current) {
-      const scrollAmount = window.innerHeight * 0.8;
-      scrollRef.current.scrollBy({
-        top: direction === 'down' ? scrollAmount : -scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
+
 
   // Fetch posts from Firebase
   useEffect(() => {
@@ -537,48 +530,16 @@ export function ReelsFeed() {
 
       <div className="flex-1 w-full relative z-10 flex flex-col items-center">
         
-        {/* Desktop Navigation Buttons */}
-        {posts.length > 1 && (
-          <div className="hidden md:flex flex-col gap-4 absolute right-8 top-1/2 -translate-y-1/2 z-50">
-            <button 
-              onClick={() => scrollFeed('up')}
-              className="w-12 h-12 rounded-full bg-charcoal-900/80 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-charcoal-800 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all shadow-xl backdrop-blur-md"
-            >
-              <ChevronUp size={24} />
-            </button>
-            <button 
-              onClick={() => scrollFeed('down')}
-              className="w-12 h-12 rounded-full bg-charcoal-900/80 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-charcoal-800 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all shadow-xl backdrop-blur-md"
-            >
-              <ChevronDown size={24} />
-            </button>
-          </div>
-        )}
-
         <div 
           ref={scrollRef}
-          className="w-full h-[100dvh] overflow-y-auto overflow-x-hidden flex flex-col items-center gap-0 md:gap-12 md:py-12 snap-y snap-mandatory scroll-smooth reels-container"
+          className="w-full h-[100dvh] overflow-y-auto overflow-x-hidden flex flex-col items-center snap-y snap-mandatory scroll-smooth reels-container md:hidden"
           style={{ 
             scrollbarWidth: 'none', 
             msOverflowStyle: 'none',
           }}
         >
           <style>{`
-            @media (max-width: 767px) {
-              .reels-container::-webkit-scrollbar { display: none; }
-            }
-            @media (min-width: 768px) {
-              .reels-container::-webkit-scrollbar {
-                width: 6px;
-              }
-              .reels-container::-webkit-scrollbar-track {
-                background: transparent;
-              }
-              .reels-container::-webkit-scrollbar-thumb {
-                background-color: rgba(255, 255, 255, 0.2);
-                border-radius: 20px;
-              }
-            }
+            .reels-container::-webkit-scrollbar { display: none; }
           `}</style>
 
           {loading ? (
@@ -592,7 +553,7 @@ export function ReelsFeed() {
           ) : (
             <>
               {posts.map((post) => (
-                <div key={post.id} data-id={post.id} className="w-full h-[100dvh] md:h-auto shrink-0 flex justify-center snap-center">
+                <div key={post.id} data-id={post.id} className="w-full h-[100dvh] shrink-0 flex justify-center snap-center reel-card-wrapper">
                   <ReelCard 
                     post={post} 
                     isVisible={visibleItems.has(post.id)}
@@ -603,14 +564,80 @@ export function ReelsFeed() {
             </>
           )}
         </div>
+
+        {/* Desktop Profile Grid */}
+        <div className="hidden md:grid grid-cols-3 gap-1 md:gap-4 max-w-4xl mx-auto pt-32 pb-12 w-full px-4 overflow-y-auto z-20">
+          {posts.map((post, index) => (
+            <div 
+              key={post.id} 
+              onClick={() => setDesktopSelectedPostIndex(index)}
+              className="aspect-square relative group cursor-pointer overflow-hidden bg-charcoal-900 border border-white/5 md:rounded-md"
+            >
+              {post.media[0].type === 'video' ? (
+                <video src={post.media[0].url} className="w-full h-full object-cover" />
+              ) : (
+                <img src={post.media[0].url} className="w-full h-full object-cover" />
+              )}
+              
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-2">
+                <Heart size={20} className="fill-white" />
+                <span className="font-bold text-lg">{post.likes}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <AnimatePresence>
+        {/* Mobile Comments Drawer */}
         {activeCommentsPostId && (
           <CommentsDrawer 
             postId={activeCommentsPostId} 
             onClose={() => setActiveCommentsPostId(null)} 
           />
+        )}
+
+        {/* Desktop Post Modal Viewer */}
+        {desktopSelectedPostIndex !== null && posts[desktopSelectedPostIndex] && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="hidden md:flex fixed inset-0 z-[100] bg-black/90 backdrop-blur-md items-center justify-center"
+          >
+            <button 
+              onClick={() => setDesktopSelectedPostIndex(null)}
+              className="absolute top-6 right-6 p-2 text-white/50 hover:text-white transition-colors"
+            >
+              <X size={32} />
+            </button>
+
+            {desktopSelectedPostIndex > 0 && (
+              <button 
+                onClick={() => setDesktopSelectedPostIndex(desktopSelectedPostIndex - 1)}
+                className="absolute left-10 p-4 text-white/50 hover:text-white transition-colors"
+              >
+                <ChevronLeft size={48} />
+              </button>
+            )}
+
+            <div className="relative z-10 w-[420px] shrink-0">
+              <ReelCard 
+                post={posts[desktopSelectedPostIndex]}
+                isVisible={true}
+                onOpenComments={() => setActiveCommentsPostId(posts[desktopSelectedPostIndex].id)}
+              />
+            </div>
+
+            {desktopSelectedPostIndex < posts.length - 1 && (
+              <button 
+                onClick={() => setDesktopSelectedPostIndex(desktopSelectedPostIndex + 1)}
+                className="absolute right-10 p-4 text-white/50 hover:text-white transition-colors"
+              >
+                <ChevronRight size={48} />
+              </button>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
 
