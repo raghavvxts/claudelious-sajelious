@@ -241,7 +241,7 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
       )}
 
       {/* Content Overlay */}
-      <div className="absolute inset-x-0 bottom-0 p-5 pb-32 md:pb-6 flex flex-col justify-end z-20 pointer-events-none">
+      <div className="absolute inset-x-0 bottom-0 p-5 pb-10 md:pb-6 flex flex-col justify-end z-20 pointer-events-none">
         
         {/* Indicators */}
         {post.media.length > 1 && (
