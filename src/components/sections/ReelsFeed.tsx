@@ -646,7 +646,7 @@ export function ReelsFeed() {
             {/* Highly Visible Close Button */}
             <button 
               onClick={() => setSelectedReelId(null)}
-              className="absolute top-6 right-6 md:top-8 md:right-8 z-[200] p-3 md:p-4 bg-charcoal-900/80 hover:bg-gold-500 hover:text-black border border-white/20 hover:border-gold-500 text-white rounded-full transition-all shadow-2xl backdrop-blur-md"
+              className="absolute top-6 left-6 md:top-8 md:left-8 z-[200] p-3 md:p-4 bg-charcoal-900/80 hover:bg-gold-500 hover:text-black border border-white/20 hover:border-gold-500 text-white rounded-full transition-all shadow-2xl backdrop-blur-md"
             >
               <X size={24} className="md:w-8 md:h-8" />
             </button>

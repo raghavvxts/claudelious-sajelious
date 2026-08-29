@@ -4,13 +4,32 @@ import { Volume2, VolumeX } from 'lucide-react';
 export function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [hasInteracted] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   useEffect(() => {
+    const startAudio = () => {
+      if (audioRef.current && !hasInteracted) {
+        audioRef.current.volume = 1.0;
+        const playPromise = audioRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            setIsPlaying(true);
+            setHasInteracted(true);
+          }).catch(() => {
+            console.log("Autoplay blocked. Waiting for explicit user interaction.");
+          });
+        }
+      }
+    };
 
-
-    // We default to paused. The user must manually click the global toggle to start music.
-    // Removed autoplay click/scroll listeners.
+    window.addEventListener('click', startAudio, { once: true });
+    window.addEventListener('scroll', startAudio, { once: true });
+    window.addEventListener('keydown', startAudio, { once: true });
+    window.addEventListener('mousemove', startAudio, { once: true });
+    window.addEventListener('touchstart', startAudio, { once: true });
+    
+    startAudio();
 
     // Listen for custom event from ReelsFeed to pause this global audio
     const handleReelAudioPlay = () => {
@@ -22,6 +41,11 @@ export function AudioPlayer() {
     window.addEventListener('pause-global-audio', handleReelAudioPlay);
 
     return () => {
+      window.removeEventListener('click', startAudio);
+      window.removeEventListener('scroll', startAudio);
+      window.removeEventListener('keydown', startAudio);
+      window.removeEventListener('mousemove', startAudio);
+      window.removeEventListener('touchstart', startAudio);
       window.removeEventListener('pause-global-audio', handleReelAudioPlay);
     };
   }, [hasInteracted]);
