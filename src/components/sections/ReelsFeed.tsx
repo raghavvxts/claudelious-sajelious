@@ -172,8 +172,8 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
         ))}
       </div>
 
-      {/* Gradient Overlay for Text Readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10 pointer-events-none" />
+      {/* Soft Gradient Overlay for Text Readability - Only on bottom half */}
+      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
 
       {/* Carousel Navigation Arrows */}
       {post.media.length > 1 && (
@@ -202,7 +202,7 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
       )}
 
       {/* Content Overlay */}
-      <div className="absolute inset-x-0 bottom-0 p-5 pb-8 md:pb-5 flex flex-col justify-end z-20 pointer-events-none">
+      <div className="absolute inset-x-0 bottom-0 p-5 pb-32 md:pb-6 flex flex-col justify-end z-20 pointer-events-none">
         
         {/* Indicators */}
         {post.media.length > 1 && (
@@ -510,20 +510,14 @@ export function ReelsFeed() {
   }, [posts]); // Re-run when posts change
 
   return (
-    <motion.section 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 1.5, ease: "easeOut" }}
+    <section 
       id="chronicles" 
       className="relative w-full h-[100dvh] bg-black flex flex-col overflow-hidden"
     >
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[300px] bg-gold-900/5 blur-[150px] pointer-events-none rounded-[100%]" />
-      
-      {/* Cinematic Global Vignette Overlay */}
-      <div className="pointer-events-none absolute inset-0 z-40 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[300px] bg-gold-900/10 blur-[120px] pointer-events-none rounded-[100%]" />
 
       {/* Floating Header Overlay */}
-      <div className="absolute top-0 inset-x-0 pt-6 pb-20 px-6 md:px-12 z-50 bg-gradient-to-b from-black/90 via-black/50 to-transparent pointer-events-none">
+      <div className="absolute top-0 inset-x-0 pt-6 pb-12 px-6 md:px-12 z-50 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
         <div className="flex items-end justify-between gap-4 max-w-7xl mx-auto pointer-events-auto">
           <div>
             <h2 className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-gold-500/80 mb-1 font-serif drop-shadow-md">Sacred Transmissions</h2>
@@ -621,6 +615,6 @@ export function ReelsFeed() {
       </AnimatePresence>
 
       <AdminUploader isOpen={isUploaderOpen} onClose={() => setIsUploaderOpen(false)} />
-    </motion.section>
+    </section>
   );
 }
