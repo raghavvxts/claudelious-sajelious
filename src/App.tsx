@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { BookOpen } from 'lucide-react';
 import { MotionProvider } from './components/motion/MotionProvider';
 import { Hero } from './components/sections/Hero';
+import { ReelsFeed } from './components/sections/ReelsFeed';
 import { Origin } from './components/sections/Origin';
 import { SajeliousMind } from './components/sections/SajeliousMind';
 import { ClaudeOracle } from './components/sections/ClaudeOracle';
@@ -38,6 +40,17 @@ function App() {
         )}
       </AnimatePresence>
 
+      {/* Fixed Navigation Button */}
+      {entered && (
+        <button
+          onClick={() => document.getElementById('chronicles')?.scrollIntoView({ behavior: 'smooth' })}
+          className="fixed top-6 right-6 md:top-8 md:right-8 z-[2000] flex items-center gap-2 px-4 py-2 bg-charcoal-900/80 backdrop-blur-md border border-gold-500/30 rounded-full text-gold-500 hover:bg-gold-500/10 transition-colors shadow-[0_0_20px_rgba(205,166,95,0.2)] cursor-pointer"
+        >
+          <BookOpen size={16} />
+          <span className="text-xs font-serif tracking-widest hidden sm:inline">THE CHRONICLES</span>
+        </button>
+      )}
+
       <main className={`relative w-full overflow-clip bg-charcoal-900 min-h-screen font-sans selection:bg-gold-500 selection:text-charcoal-900 ${!entered ? "md:h-screen md:overflow-hidden" : ""}`}>
         
         {/* Global Cinematic Glassy Vignette (Spotlight Effect) */}
@@ -48,6 +61,7 @@ function App() {
         
         <AudioPlayer />
         <Hero />
+        <ReelsFeed />
         <Origin />
         <SajeliousMind />
         <ClaudeOracle />

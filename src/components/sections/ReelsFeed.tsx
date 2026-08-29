@@ -1,0 +1,626 @@
+import { useRef, useState, useEffect } from 'react';
+import { Volume2, VolumeX, Heart, MessageCircle, Send, Plus, ChevronRight, ChevronLeft, Trash2, X, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { cn } from '../../lib/utils';
+import { db, collection, query, orderBy, onSnapshot, deleteDoc, doc, addDoc, serverTimestamp } from '../../lib/firebase';
+import { AdminUploader } from '../admin/AdminUploader';
+
+interface Media {
+  url: string;
+  type: 'image' | 'video';
+}
+
+interface Post {
+  id: string;
+  media: Media[];
+  caption: string;
+  timestamp: string;
+  likes: number;
+  audioUrl?: string;
+  audioName?: string;
+}
+
+function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: boolean; onOpenComments: () => void }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
+  const [isLiked, setIsLiked] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
+  const backgroundAudioRef = useRef<HTMLAudioElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // Intersection / Autoplay Logic
+  useEffect(() => {
+    // Determine the active video if any
+    const activeMedia = post.media[currentSlide];
+    const activeVideo = activeMedia?.type === 'video' ? videoRefs.current[currentSlide] : null;
+    const bgAudio = backgroundAudioRef.current;
+
+    if (isVisible) {
+      if (bgAudio) {
+        bgAudio.play().catch(() => {});
+        // Dispatch global event to pause main site music
+        window.dispatchEvent(new CustomEvent('pause-global-audio'));
+      }
+      if (activeVideo) {
+        activeVideo.play().catch(() => {});
+      }
+    } else {
+      if (bgAudio) bgAudio.pause();
+      if (activeVideo) activeVideo.pause();
+    }
+
+    // Pause all non-active videos
+    videoRefs.current.forEach((vid, idx) => {
+      if (vid && idx !== currentSlide) vid.pause();
+    });
+
+  }, [isVisible, currentSlide, post.media]);
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted(!isMuted);
+  };
+
+  const toggleLike = () => {
+    setIsLiked(!isLiked);
+  };
+
+  const handleDelete = async () => {
+    const password = prompt("Enter the Secret Admin Code to delete this post:");
+    if (password === 'vedrag') {
+      try {
+        await deleteDoc(doc(db, 'posts', post.id));
+      } catch (err) {
+        console.error("Error deleting post:", err);
+        alert("Failed to delete post.");
+      }
+    } else if (password !== null) {
+      alert("Incorrect password!");
+    }
+  };
+
+  const scrollNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (carouselRef.current && currentSlide < post.media.length - 1) {
+      const nextSlide = currentSlide + 1;
+      setCurrentSlide(nextSlide);
+      carouselRef.current.scrollTo({
+        left: carouselRef.current.clientWidth * nextSlide,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (carouselRef.current && currentSlide > 0) {
+      const prevSlide = currentSlide - 1;
+      setCurrentSlide(prevSlide);
+      carouselRef.current.scrollTo({
+        left: carouselRef.current.clientWidth * prevSlide,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Sync scroll state with active slide (if user manually swipes instead of clicking arrows)
+  const handleScroll = () => {
+    if (carouselRef.current) {
+      const slideIndex = Math.round(carouselRef.current.scrollLeft / carouselRef.current.clientWidth);
+      if (slideIndex !== currentSlide) {
+        setCurrentSlide(slideIndex);
+      }
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (backgroundAudioRef.current && backgroundAudioRef.current.duration) {
+      setAudioProgress((backgroundAudioRef.current.currentTime / backgroundAudioRef.current.duration) * 100);
+    }
+  };
+
+  const hasAudio = !!post.audioUrl || post.media.some(m => m.type === 'video');
+
+  return (
+    <div className="relative shrink-0 w-full h-[100dvh] md:w-[420px] md:h-[90vh] md:rounded-2xl overflow-hidden shadow-2xl bg-charcoal-950 md:border md:border-white/10 snap-center group">
+      
+      {post.audioUrl && (
+        <audio 
+          ref={backgroundAudioRef} 
+          src={post.audioUrl} 
+          loop 
+          muted={isMuted} 
+          preload="auto" 
+          onTimeUpdate={handleTimeUpdate}
+        />
+      )}
+
+      {/* Media Carousel */}
+      <div 
+        ref={carouselRef}
+        onScroll={handleScroll}
+        className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide scroll-smooth"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <style>{`
+          div::-webkit-scrollbar { display: none; }
+        `}</style>
+        
+        {post.media.map((media, index) => (
+          <div key={index} className="w-full h-full shrink-0 snap-center relative bg-charcoal-950 flex items-center justify-center overflow-hidden">
+            {media.type === 'image' ? (
+              <img 
+                src={media.url} 
+                alt={`${post.caption.substring(0, 20)}...`}
+                className={cn(
+                  "w-full h-full object-cover transition-transform duration-[20000ms] ease-out",
+                  isVisible ? "scale-110" : "scale-100"
+                )}
+              />
+            ) : (
+              <video
+                ref={(el) => { videoRefs.current[index] = el; }}
+                src={media.url}
+                muted={post.audioUrl ? true : isMuted} // Force mute video if custom audio is playing
+                loop
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Gradient Overlay for Text Readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10 pointer-events-none" />
+
+      {/* Carousel Navigation Arrows */}
+      {post.media.length > 1 && (
+        <>
+          {currentSlide > 0 && (
+            <button onClick={scrollPrev} className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white transition-colors border border-white/10">
+              <ChevronLeft size={16} />
+            </button>
+          )}
+          {currentSlide < post.media.length - 1 && (
+            <button onClick={scrollNext} className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white transition-colors border border-white/10">
+              <ChevronRight size={16} />
+            </button>
+          )}
+        </>
+      )}
+
+      {/* Audio Controls (Mute/Unmute) */}
+      {hasAudio && (
+        <button 
+          onClick={toggleMute}
+          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/40 backdrop-blur-md text-white/90 hover:bg-black/60 transition-colors border border-white/10"
+        >
+          {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+        </button>
+      )}
+
+      {/* Content Overlay */}
+      <div className="absolute inset-x-0 bottom-0 p-5 pb-8 md:pb-5 flex flex-col justify-end z-20 pointer-events-none">
+        
+        {/* Indicators */}
+        {post.media.length > 1 && (
+          <div className="flex items-center justify-center gap-1.5 mb-4 pointer-events-auto">
+            {post.media.map((_, idx) => (
+              <div 
+                key={idx} 
+                className={cn("h-1.5 rounded-full transition-all duration-300", currentSlide === idx ? "w-4 bg-gold-500" : "w-1.5 bg-white/40")}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 mb-3 pointer-events-auto">
+          <div className="w-8 h-8 rounded-full bg-gold-500/20 border border-gold-500/50 flex items-center justify-center overflow-hidden">
+            <span className="font-serif text-xs font-bold text-gold-400">CSJ</span>
+          </div>
+          <span className="font-sans text-sm font-semibold text-white">sajelious.ai</span>
+          <span className="text-xs text-white/50 ml-auto">{post.timestamp}</span>
+        </div>
+
+        <p className="text-sm text-white/90 line-clamp-3 mb-4 font-sans font-light pointer-events-auto">
+          {post.caption}
+        </p>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-4 pointer-events-auto">
+          <button 
+            onClick={toggleLike}
+            className={cn(
+              "flex items-center gap-1.5 transition-colors",
+              isLiked ? "text-red-500" : "text-white/80 hover:text-white"
+            )}
+          >
+            <Heart size={22} className={cn("transition-transform active:scale-75", isLiked ? "fill-red-500" : "")} />
+            <span className="text-xs font-medium">{post.likes + (isLiked ? 1 : 0)}</span>
+          </button>
+          
+          <button 
+            onClick={onOpenComments}
+            className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors"
+          >
+            <MessageCircle size={22} />
+          </button>
+
+          <button className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors">
+            <Send size={20} />
+          </button>
+
+          <button 
+            onClick={handleDelete}
+            className="flex items-center gap-1.5 text-white/50 hover:text-red-500 transition-colors ml-auto"
+            title="Delete Chronicle"
+          >
+            <Trash2 size={20} />
+          </button>
+        </div>
+
+        {/* Audio Track Marquee (if custom audio) */}
+        {post.audioUrl && post.audioName && (
+          <div className="mt-4 flex items-center gap-2 overflow-hidden pointer-events-auto text-gold-400">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 shrink-0 animate-pulse"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+            <div className="whitespace-nowrap animate-marquee text-[11px] uppercase tracking-wider font-medium">
+              {post.audioName} • {post.audioName}
+            </div>
+            <style>{`
+              @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+              .animate-marquee { animation: marquee 10s linear infinite; }
+            `}</style>
+          </div>
+        )}
+      </div>
+
+      {/* Cinematic Audio Progress Bar */}
+      {hasAudio && (
+        <div className="absolute bottom-0 inset-x-0 h-1 bg-white/10 z-30">
+          <div className="h-full bg-gold-500 shadow-[0_0_10px_rgba(212,175,55,0.8)] transition-all duration-200" style={{ width: `${audioProgress}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Comments Drawer Component ---
+interface Comment {
+  id: string;
+  text: string;
+  author: string;
+  createdAt: any;
+}
+
+function CommentsDrawer({ postId, onClose }: { postId: string; onClose: () => void }) {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [authorName, setAuthorName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const q = query(collection(db, `posts/${postId}/comments`), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment)));
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, [postId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, `posts/${postId}/comments`), {
+        text: newComment.trim(),
+        author: authorName.trim() || 'Anonymous',
+        createdAt: serverTimestamp()
+      });
+      setNewComment('');
+    } catch (err) {
+      console.error("Failed to post comment:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <motion.div 
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+      />
+      <motion.div 
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="absolute bottom-0 inset-x-0 h-[70vh] md:h-[60vh] md:max-w-md md:mx-auto bg-charcoal-900 rounded-t-3xl shadow-2xl z-[70] flex flex-col border-t border-white/10"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-white/10">
+          <h3 className="font-serif text-lg text-white">Comments</h3>
+          <button onClick={onClose} className="p-2 text-white/50 hover:text-white transition-colors bg-white/5 rounded-full">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-gold-500" /></div>
+          ) : comments.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-white/40 font-serif">No comments yet. Be the first!</div>
+          ) : (
+            comments.map(comment => (
+              <div key={comment.id} className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-gold-500/20 flex shrink-0 items-center justify-center text-gold-500 font-bold text-xs uppercase">
+                  {comment.author.charAt(0)}
+                </div>
+                <div>
+                  <span className="text-xs text-white/50 font-medium block mb-0.5">{comment.author}</span>
+                  <p className="text-sm text-white/90">{comment.text}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="p-4 border-t border-white/10 bg-charcoal-950 rounded-t-2xl">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <input 
+              type="text" 
+              placeholder="Your name (optional)" 
+              value={authorName}
+              onChange={e => setAuthorName(e.target.value)}
+              className="bg-transparent border-b border-white/10 px-2 py-1 text-sm text-white focus:outline-none focus:border-gold-500/50 transition-colors"
+            />
+            <div className="flex items-center gap-2">
+              <input 
+                type="text" 
+                placeholder="Add a comment..." 
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                required
+                className="flex-1 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-gold-500/50 transition-colors"
+              />
+              <button 
+                type="submit" 
+                disabled={isSubmitting || !newComment.trim()}
+                className="w-9 h-9 rounded-full bg-gold-500 text-charcoal-950 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} className="-ml-0.5" />}
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+export function ReelsFeed() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isUploaderOpen, setIsUploaderOpen] = useState(false);
+  const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
+
+  const scrollFeed = (direction: 'up' | 'down') => {
+    if (scrollRef.current) {
+      const scrollAmount = window.innerHeight * 0.8;
+      scrollRef.current.scrollBy({
+        top: direction === 'down' ? scrollAmount : -scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Fetch posts from Firebase
+  useEffect(() => {
+    try {
+      const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedPosts = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
+          
+          let timeString = 'Just now';
+          if (data.createdAt) {
+            let date = new Date();
+            if (typeof data.createdAt.toDate === 'function') {
+              date = data.createdAt.toDate();
+            } else if (data.createdAt.seconds) {
+              date = new Date(data.createdAt.seconds * 1000);
+            } else {
+              date = new Date(data.createdAt);
+            }
+            
+            const now = new Date();
+            const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+            if (diffInHours === 0) timeString = 'Recently';
+            else if (diffInHours < 24) timeString = `${diffInHours} hours ago`;
+            else timeString = `${Math.floor(diffInHours / 24)} days ago`;
+          }
+
+          // Backwards compatibility for single media posts
+          const media = data.media || (data.url ? [{ url: data.url, type: data.type || 'image' }] : []);
+
+          return {
+            id: doc.id,
+            media,
+            caption: data.caption || '',
+            timestamp: timeString,
+            likes: data.likes || 0,
+            audioUrl: data.audioUrl,
+            audioName: data.audioName,
+          } as Post;
+        });
+        
+        setPosts(fetchedPosts);
+        setLoading(false);
+        setError('');
+      }, (err) => {
+        console.error("Firebase fetch error:", err);
+        setLoading(false);
+        setError('Could not connect to the archives. Please check your connection or database rules.');
+      });
+
+      return () => unsubscribe();
+    } catch (err) {
+      console.error("Initialization error:", err);
+      setLoading(false);
+      setError('System malfunction in the chronicles core.');
+    }
+  }, []);
+
+  // Intersection Observer for autoplay functionality
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setVisibleItems((prev) => {
+          const newVisible = new Set(prev);
+          entries.forEach((entry) => {
+            const id = entry.target.getAttribute('data-id');
+            if (id) {
+              if (entry.isIntersecting) {
+                newVisible.add(id);
+              } else {
+                newVisible.delete(id);
+              }
+            }
+          });
+          return newVisible;
+        });
+      },
+      {
+        root: scrollRef.current,
+        threshold: 0.6, // Must be 60% visible to autoplay
+      }
+    );
+
+    const elements = document.querySelectorAll('.reel-card-wrapper');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [posts]); // Re-run when posts change
+
+  return (
+    <motion.section 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 1.5, ease: "easeOut" }}
+      id="chronicles" 
+      className="relative w-full h-[100dvh] bg-black flex flex-col overflow-hidden"
+    >
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[300px] bg-gold-900/5 blur-[150px] pointer-events-none rounded-[100%]" />
+      
+      {/* Cinematic Global Vignette Overlay */}
+      <div className="pointer-events-none absolute inset-0 z-40 bg-[radial-gradient(circle_at_center,transparent_30%,rgba(0,0,0,0.8)_100%)]" />
+
+      {/* Floating Header Overlay */}
+      <div className="absolute top-0 inset-x-0 pt-6 pb-20 px-6 md:px-12 z-50 bg-gradient-to-b from-black/90 via-black/50 to-transparent pointer-events-none">
+        <div className="flex items-end justify-between gap-4 max-w-7xl mx-auto pointer-events-auto">
+          <div>
+            <h2 className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-gold-500/80 mb-1 font-serif drop-shadow-md">Sacred Transmissions</h2>
+            <div className="flex items-center gap-4">
+              <h3 className="text-2xl md:text-4xl font-serif text-white tracking-wide drop-shadow-md">The Chronicles</h3>
+              <button 
+                onClick={() => setIsUploaderOpen(true)}
+                className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-gold-500/30 text-gold-500 flex items-center justify-center hover:bg-gold-500/20 transition-colors bg-charcoal-900/80 backdrop-blur-md shadow-lg"
+                title="Scribe a new chronicle"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 w-full relative z-10 flex flex-col items-center">
+        
+        {/* Desktop Navigation Buttons */}
+        {posts.length > 1 && (
+          <div className="hidden md:flex flex-col gap-4 absolute right-8 top-1/2 -translate-y-1/2 z-50">
+            <button 
+              onClick={() => scrollFeed('up')}
+              className="w-12 h-12 rounded-full bg-charcoal-900/80 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-charcoal-800 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all shadow-xl backdrop-blur-md"
+            >
+              <ChevronUp size={24} />
+            </button>
+            <button 
+              onClick={() => scrollFeed('down')}
+              className="w-12 h-12 rounded-full bg-charcoal-900/80 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-charcoal-800 hover:shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all shadow-xl backdrop-blur-md"
+            >
+              <ChevronDown size={24} />
+            </button>
+          </div>
+        )}
+
+        <div 
+          ref={scrollRef}
+          className="w-full h-[100dvh] overflow-y-auto overflow-x-hidden flex flex-col items-center gap-0 md:gap-12 md:py-12 snap-y snap-mandatory scroll-smooth reels-container"
+          style={{ 
+            scrollbarWidth: 'none', 
+            msOverflowStyle: 'none',
+          }}
+        >
+          <style>{`
+            @media (max-width: 767px) {
+              .reels-container::-webkit-scrollbar { display: none; }
+            }
+            @media (min-width: 768px) {
+              .reels-container::-webkit-scrollbar {
+                width: 6px;
+              }
+              .reels-container::-webkit-scrollbar-track {
+                background: transparent;
+              }
+              .reels-container::-webkit-scrollbar-thumb {
+                background-color: rgba(255, 255, 255, 0.2);
+                border-radius: 20px;
+              }
+            }
+          `}</style>
+
+          {loading ? (
+            <div className="w-full h-full flex items-center justify-center text-white/50 font-serif tracking-widest text-xl">Loading the archives...</div>
+          ) : error ? (
+            <div className="w-full h-full flex items-center justify-center text-red-500/80">{error}</div>
+          ) : posts.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center text-white/40 font-serif tracking-widest text-xl">
+              No sacred transmissions have been made yet.
+            </div>
+          ) : (
+            <>
+              {posts.map((post) => (
+                <div key={post.id} data-id={post.id} className="w-full h-[100dvh] md:h-auto shrink-0 flex justify-center snap-center">
+                  <ReelCard 
+                    post={post} 
+                    isVisible={visibleItems.has(post.id)}
+                    onOpenComments={() => setActiveCommentsPostId(post.id)}
+                  />
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {activeCommentsPostId && (
+          <CommentsDrawer 
+            postId={activeCommentsPostId} 
+            onClose={() => setActiveCommentsPostId(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AdminUploader isOpen={isUploaderOpen} onClose={() => setIsUploaderOpen(false)} />
+    </motion.section>
+  );
+}
