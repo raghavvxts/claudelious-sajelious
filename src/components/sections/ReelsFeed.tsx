@@ -26,7 +26,7 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
   const [isLiked, setIsLiked] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-  const backgroundAudioRef = useRef<HTMLAudioElement>(null);
+  const backgroundAudioRef = useRef<HTMLVideoElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   // Listen for global mute events
@@ -163,13 +163,15 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
     <div className="relative shrink-0 w-full h-[100dvh] md:w-[420px] md:h-[90vh] md:rounded-2xl overflow-hidden shadow-2xl bg-charcoal-950 md:border md:border-white/10 snap-center group">
       
       {post.audioUrl && (
-        <audio 
+        <video 
           ref={backgroundAudioRef} 
           src={post.audioUrl} 
           loop 
           muted={isMuted} 
+          playsInline
           preload="auto" 
           onTimeUpdate={handleTimeUpdate}
+          className="hidden"
         />
       )}
 
@@ -232,9 +234,9 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
       {hasAudio && (
         <button 
           onClick={toggleMute}
-          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/40 backdrop-blur-md text-white/90 hover:bg-black/60 transition-colors border border-white/10"
+          className="absolute top-4 right-4 z-20 p-4 md:p-2 rounded-full bg-black/60 md:bg-black/40 backdrop-blur-md text-white md:text-white/90 hover:bg-black/80 transition-colors border border-white/20 md:border-white/10 shadow-xl"
         >
-          {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          {isMuted ? <VolumeX size={24} className="md:w-[18px] md:h-[18px]" /> : <Volume2 size={24} className="md:w-[18px] md:h-[18px]" />}
         </button>
       )}
 

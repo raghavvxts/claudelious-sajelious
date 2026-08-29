@@ -296,7 +296,7 @@ export function AdminUploader({ isOpen, onClose }: { isOpen: boolean; onClose: (
                       <div className="relative border border-dashed border-white/20 rounded-lg p-3 text-center hover:border-gold-500/50 bg-white/5 transition-colors">
                         <input 
                           type="file" 
-                          accept="audio/*"
+                          accept="audio/*, .mp3, .wav, .m4a, public.audio"
                           onChange={(e) => {
                             setNewAudioFile(e.target.files?.[0] || null);
                             if (e.target.files?.[0] && !newAudioName) {

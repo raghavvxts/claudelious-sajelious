@@ -23,16 +23,8 @@ export function AudioPlayer() {
       }
     };
 
-    // Modern browsers strictly block autoplay until the user interacts with the page.
-    // We listen for any movement, scroll, click, or key press to automatically start the music.
-    window.addEventListener('click', startAudio, { once: true });
-    window.addEventListener('scroll', startAudio, { once: true });
-    window.addEventListener('keydown', startAudio, { once: true });
-    window.addEventListener('mousemove', startAudio, { once: true });
-    window.addEventListener('touchstart', startAudio, { once: true });
-
-    // Attempt to start immediately (works if user has visited the site before and browser allows it)
-    startAudio();
+    // We default to paused. The user must manually click the global toggle to start music.
+    // Removed autoplay click/scroll listeners.
 
     // Listen for custom event from ReelsFeed to pause this global audio
     const handleReelAudioPlay = () => {
@@ -44,11 +36,6 @@ export function AudioPlayer() {
     window.addEventListener('pause-global-audio', handleReelAudioPlay);
 
     return () => {
-      window.removeEventListener('click', startAudio);
-      window.removeEventListener('scroll', startAudio);
-      window.removeEventListener('keydown', startAudio);
-      window.removeEventListener('mousemove', startAudio);
-      window.removeEventListener('touchstart', startAudio);
       window.removeEventListener('pause-global-audio', handleReelAudioPlay);
     };
   }, [hasInteracted]);
