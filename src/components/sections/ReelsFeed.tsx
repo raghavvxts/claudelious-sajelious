@@ -684,9 +684,11 @@ export function ReelsFeed() {
         )}
 
         {/* Fullscreen Vertical Reels Viewer Modal */}
-        {selectedReelId && (
-          <motion.div 
-            initial={{ opacity: 0 }}
+        {selectedReelId && (() => {
+          const currentIndex = posts.findIndex(p => p.id === selectedReelId);
+          return (
+            <motion.div 
+              initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[9000] bg-black/95 backdrop-blur-xl flex justify-center"
@@ -698,6 +700,25 @@ export function ReelsFeed() {
             >
               <X size={24} className="md:w-8 md:h-8" />
             </button>
+
+            {/* Desktop Left/Right Navigation Arrows */}
+            {currentIndex > 0 && (
+              <button 
+                onClick={() => setSelectedReelId(posts[currentIndex - 1].id)}
+                className="hidden md:flex absolute left-10 top-1/2 -translate-y-1/2 z-[9001] p-4 text-white/50 hover:text-white transition-colors"
+              >
+                <ChevronLeft size={48} />
+              </button>
+            )}
+            
+            {currentIndex < posts.length - 1 && (
+              <button 
+                onClick={() => setSelectedReelId(posts[currentIndex + 1].id)}
+                className="hidden md:flex absolute right-10 top-1/2 -translate-y-1/2 z-[9001] p-4 text-white/50 hover:text-white transition-colors"
+              >
+                <ChevronRight size={48} />
+              </button>
+            )}
 
             {/* Vertical Swipe Feed Container inside Modal */}
             <div 
@@ -727,7 +748,8 @@ export function ReelsFeed() {
               ))}
             </div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       <AdminUploader isOpen={isUploaderOpen} onClose={() => setIsUploaderOpen(false)} />
