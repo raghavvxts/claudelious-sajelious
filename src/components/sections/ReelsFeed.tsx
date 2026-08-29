@@ -641,12 +641,12 @@ export function ReelsFeed() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex justify-center"
+            className="fixed inset-0 z-[9000] bg-black/95 backdrop-blur-xl flex justify-center"
           >
             {/* Highly Visible Close Button */}
             <button 
               onClick={() => setSelectedReelId(null)}
-              className="absolute top-6 left-6 md:top-8 md:left-8 z-[200] p-3 md:p-4 bg-charcoal-900/80 hover:bg-gold-500 hover:text-black border border-white/20 hover:border-gold-500 text-white rounded-full transition-all shadow-2xl backdrop-blur-md"
+              className="absolute top-6 left-6 md:top-8 md:left-8 z-[9001] p-3 md:p-4 bg-charcoal-900/80 hover:bg-gold-500 hover:text-black border border-white/20 hover:border-gold-500 text-white rounded-full transition-all shadow-2xl backdrop-blur-md"
             >
               <X size={24} className="md:w-8 md:h-8" />
             </button>
