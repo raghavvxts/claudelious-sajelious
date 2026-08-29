@@ -61,6 +61,8 @@ export function AudioPlayer() {
       } else {
         audioRef.current.play();
         setIsPlaying(true);
+        // Dispatch event to mute all reels when global audio is manually played
+        window.dispatchEvent(new CustomEvent('mute-reels-audio'));
       }
     }
   };

@@ -29,6 +29,22 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
   const backgroundAudioRef = useRef<HTMLAudioElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
+  // Listen for global mute events
+  useEffect(() => {
+    const handleGlobalMute = () => setIsMuted(true);
+    const handleMuteOther = (e: CustomEvent) => {
+      if (e.detail !== post.id) setIsMuted(true);
+    };
+
+    window.addEventListener('mute-reels-audio', handleGlobalMute);
+    window.addEventListener('mute-other-reels', handleMuteOther as EventListener);
+
+    return () => {
+      window.removeEventListener('mute-reels-audio', handleGlobalMute);
+      window.removeEventListener('mute-other-reels', handleMuteOther as EventListener);
+    };
+  }, [post.id]);
+
   // Intersection / Autoplay Logic
   useEffect(() => {
     // Determine the active video if any
@@ -39,8 +55,9 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
     if (isVisible) {
       if (bgAudio) {
         bgAudio.play().catch(() => {});
-        // Dispatch global event to pause main site music
-        window.dispatchEvent(new CustomEvent('pause-global-audio'));
+        if (!isMuted) {
+          window.dispatchEvent(new CustomEvent('pause-global-audio'));
+        }
       }
       if (activeVideo) {
         activeVideo.play().catch(() => {});
@@ -55,11 +72,31 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
       if (vid && idx !== currentSlide) vid.pause();
     });
 
-  }, [isVisible, currentSlide, post.media]);
+  }, [isVisible, currentSlide, post.media, isMuted]);
 
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsMuted(!isMuted);
+    
+    if (isMuted) {
+      // Unmuting
+      setIsMuted(false);
+      window.dispatchEvent(new CustomEvent('pause-global-audio'));
+      window.dispatchEvent(new CustomEvent('mute-other-reels', { detail: post.id }));
+      
+      // Explicitly call play in the click handler to satisfy iOS Safari restrictions
+      if (backgroundAudioRef.current) {
+        backgroundAudioRef.current.muted = false;
+        backgroundAudioRef.current.play().catch(() => {});
+      }
+      
+      const activeVideo = videoRefs.current[currentSlide];
+      if (activeVideo) {
+        activeVideo.muted = false;
+        activeVideo.play().catch(() => {});
+      }
+    } else {
+      setIsMuted(true);
+    }
   };
 
   const toggleLike = () => {
