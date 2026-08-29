@@ -3,13 +3,13 @@ import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSn
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCMte3FsLZB0a-XU6bVFnqJ0EeUA7pKZ1A",
-  authDomain: "csjr1743.firebaseapp.com",
-  projectId: "csjr1743",
-  storageBucket: "csjr1743.firebasestorage.app",
-  messagingSenderId: "868123575329",
-  appId: "1:868123575329:web:245af791a3c642b804cf60",
-  measurementId: "G-M4YJ2KXCJH"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase

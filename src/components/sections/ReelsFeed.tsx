@@ -25,7 +25,7 @@ function ReelCard({ post, isVisible, onOpenComments }: { post: Post; isVisible: 
   const [isMuted, setIsMuted] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [audioProgress, setAudioProgress] = useState(0);
-  const videoRefs = useRef<{ [key: number]: HTMLVideoElement | null }>({});
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const backgroundAudioRef = useRef<HTMLAudioElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
