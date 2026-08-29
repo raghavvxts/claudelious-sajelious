@@ -448,7 +448,7 @@ export function ReelsFeed() {
   const [error, setError] = useState('');
   const [isUploaderOpen, setIsUploaderOpen] = useState(false);
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
-  const [desktopSelectedPostIndex, setDesktopSelectedPostIndex] = useState<number | null>(null);
+  const [selectedReelId, setSelectedReelId] = useState<string | null>(null);
 
 
 
@@ -510,8 +510,13 @@ export function ReelsFeed() {
     }
   }, []);
 
-  // Intersection Observer for autoplay functionality
+  // Intersection Observer for autoplay functionality inside Modal
   useEffect(() => {
+    if (!selectedReelId) {
+      setVisibleItems(new Set());
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         setVisibleItems((prev) => {
@@ -531,15 +536,34 @@ export function ReelsFeed() {
       },
       {
         root: scrollRef.current,
-        threshold: 0.6, // Must be 60% visible to autoplay
+        threshold: 0.6,
       }
     );
 
-    const elements = document.querySelectorAll('.reel-card-wrapper');
-    elements.forEach((el) => observer.observe(el));
+    // Wait slightly for modal animation and DOM to mount
+    const timeoutId = setTimeout(() => {
+      const elements = document.querySelectorAll('.reel-card-wrapper');
+      elements.forEach((el) => observer.observe(el));
+    }, 50);
 
-    return () => observer.disconnect();
-  }, [posts]); // Re-run when posts change
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [posts, selectedReelId]);
+
+  // Scroll to selected reel on open
+  useEffect(() => {
+    if (selectedReelId && scrollRef.current) {
+      // Need a tiny timeout to ensure DOM is ready after state change
+      setTimeout(() => {
+        const el = document.querySelector(`[data-id="${selectedReelId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+      }, 10);
+    }
+  }, [selectedReelId]);
 
   return (
     <section 
@@ -569,47 +593,22 @@ export function ReelsFeed() {
 
       <div className="flex-1 w-full relative z-10 flex flex-col items-center">
         
-        <div 
-          ref={scrollRef}
-          className="w-full h-[100dvh] overflow-y-auto overflow-x-hidden flex flex-col items-center snap-y snap-mandatory scroll-smooth reels-container md:hidden"
-          style={{ 
-            scrollbarWidth: 'none', 
-            msOverflowStyle: 'none',
-          }}
-        >
-          <style>{`
-            .reels-container::-webkit-scrollbar { display: none; }
-          `}</style>
+        {loading ? (
+          <div className="w-full h-full flex items-center justify-center text-white/50 font-serif tracking-widest text-xl pt-32">Loading the archives...</div>
+        ) : error ? (
+          <div className="w-full h-full flex items-center justify-center text-red-500/80 pt-32">{error}</div>
+        ) : posts.length === 0 ? (
+          <div className="w-full h-full flex items-center justify-center text-white/40 font-serif tracking-widest text-xl pt-32">
+            No sacred transmissions have been made yet.
+          </div>
+        ) : null}
 
-          {loading ? (
-            <div className="w-full h-full flex items-center justify-center text-white/50 font-serif tracking-widest text-xl">Loading the archives...</div>
-          ) : error ? (
-            <div className="w-full h-full flex items-center justify-center text-red-500/80">{error}</div>
-          ) : posts.length === 0 ? (
-            <div className="w-full h-full flex items-center justify-center text-white/40 font-serif tracking-widest text-xl">
-              No sacred transmissions have been made yet.
-            </div>
-          ) : (
-            <>
-              {posts.map((post) => (
-                <div key={post.id} data-id={post.id} className="w-full h-[100dvh] shrink-0 flex justify-center snap-center reel-card-wrapper">
-                  <ReelCard 
-                    post={post} 
-                    isVisible={visibleItems.has(post.id)}
-                    onOpenComments={() => setActiveCommentsPostId(post.id)}
-                  />
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-
-        {/* Desktop Profile Grid */}
-        <div className="hidden md:grid grid-cols-3 gap-1 md:gap-4 max-w-4xl mx-auto pt-32 pb-12 w-full px-4 overflow-y-auto z-20">
-          {posts.map((post, index) => (
+        {/* Unified Profile Grid (Mobile & Desktop) */}
+        <div className="grid grid-cols-3 gap-1 md:gap-4 max-w-4xl mx-auto pt-32 pb-12 w-full px-1 md:px-4 overflow-y-auto z-20">
+          {posts.map((post) => (
             <div 
               key={post.id} 
-              onClick={() => setDesktopSelectedPostIndex(index)}
+              onClick={() => setSelectedReelId(post.id)}
               className="aspect-square relative group cursor-pointer overflow-hidden bg-charcoal-900 border border-white/5 md:rounded-md"
             >
               {post.media[0].type === 'video' ? (
@@ -636,46 +635,49 @@ export function ReelsFeed() {
           />
         )}
 
-        {/* Desktop Post Modal Viewer */}
-        {desktopSelectedPostIndex !== null && posts[desktopSelectedPostIndex] && (
+        {/* Fullscreen Vertical Reels Viewer Modal */}
+        {selectedReelId && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="hidden md:flex fixed inset-0 z-[100] bg-black/90 backdrop-blur-md items-center justify-center"
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex justify-center"
           >
+            {/* Highly Visible Close Button */}
             <button 
-              onClick={() => setDesktopSelectedPostIndex(null)}
-              className="absolute top-6 right-6 p-2 text-white/50 hover:text-white transition-colors"
+              onClick={() => setSelectedReelId(null)}
+              className="absolute top-6 right-6 md:top-8 md:right-8 z-[200] p-3 md:p-4 bg-charcoal-900/80 hover:bg-gold-500 hover:text-black border border-white/20 hover:border-gold-500 text-white rounded-full transition-all shadow-2xl backdrop-blur-md"
             >
-              <X size={32} />
+              <X size={24} className="md:w-8 md:h-8" />
             </button>
 
-            {desktopSelectedPostIndex > 0 && (
-              <button 
-                onClick={() => setDesktopSelectedPostIndex(desktopSelectedPostIndex - 1)}
-                className="absolute left-10 p-4 text-white/50 hover:text-white transition-colors"
-              >
-                <ChevronLeft size={48} />
-              </button>
-            )}
+            {/* Vertical Swipe Feed Container inside Modal */}
+            <div 
+              ref={scrollRef}
+              className="w-full md:w-[420px] h-[100dvh] overflow-y-auto overflow-x-hidden flex flex-col snap-y snap-mandatory scroll-smooth reels-container relative"
+              style={{ 
+                scrollbarWidth: 'none', 
+                msOverflowStyle: 'none',
+              }}
+            >
+              <style>{`
+                .reels-container::-webkit-scrollbar { display: none; }
+              `}</style>
 
-            <div className="relative z-10 w-[420px] shrink-0">
-              <ReelCard 
-                post={posts[desktopSelectedPostIndex]}
-                isVisible={true}
-                onOpenComments={() => setActiveCommentsPostId(posts[desktopSelectedPostIndex].id)}
-              />
+              {posts.map((post) => (
+                <div 
+                  key={post.id} 
+                  data-id={post.id} 
+                  className="w-full h-[100dvh] shrink-0 flex justify-center snap-center reel-card-wrapper md:py-6"
+                >
+                  <ReelCard 
+                    post={post} 
+                    isVisible={visibleItems.has(post.id)}
+                    onOpenComments={() => setActiveCommentsPostId(post.id)}
+                  />
+                </div>
+              ))}
             </div>
-
-            {desktopSelectedPostIndex < posts.length - 1 && (
-              <button 
-                onClick={() => setDesktopSelectedPostIndex(desktopSelectedPostIndex + 1)}
-                className="absolute right-10 p-4 text-white/50 hover:text-white transition-colors"
-              >
-                <ChevronRight size={48} />
-              </button>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

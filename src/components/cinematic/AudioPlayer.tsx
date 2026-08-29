@@ -4,24 +4,10 @@ import { Volume2, VolumeX } from 'lucide-react';
 export function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [hasInteracted] = useState(false);
 
   useEffect(() => {
-    const startAudio = () => {
-      if (audioRef.current && !hasInteracted) {
-        audioRef.current.volume = 1.0; // Instantly start at 100% volume
-        const playPromise = audioRef.current.play();
-        
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            setIsPlaying(true);
-            setHasInteracted(true);
-          }).catch(() => {
-            console.log("Autoplay blocked. Waiting for explicit user interaction.");
-          });
-        }
-      }
-    };
+
 
     // We default to paused. The user must manually click the global toggle to start music.
     // Removed autoplay click/scroll listeners.
